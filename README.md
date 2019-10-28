@@ -1,5 +1,5 @@
 # LMC Evaluator
-A Little Minio Computer (edited version of Little Man Computer) Evaluator that helps user test the correctness of the algorithms.
+A Little Minion Computer (edited version of Little Man Computer) Evaluator that helps user test the correctness of the algorithms.
 
 ## Requirement
 1. python 3 runtime
