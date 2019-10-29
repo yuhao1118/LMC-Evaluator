@@ -3,6 +3,7 @@ import math, sys
 import os
 g_inp = 0
 total_fc = 0
+neg_flag = False
 
 OPCODES = {
     "ADD": 1,
@@ -163,7 +164,14 @@ def compile_assembly(asm):
 def write_memory(address, content, registers, memory):
     registers["mar"] = address
     registers["mdr"] = content
-    memory[registers["mar"]] = registers["mdr"]
+    temp_content = registers["mdr"]
+    if content > 999:
+        temp_content = 0
+    if content < 0:
+        global neg_flag
+        neg_flag = True
+        temp_content = 0
+    memory[registers["mar"]] = temp_content
     if PRINT_DEBUG: print("Wrote {data} to address {addr} ({name})".format(data=content, addr=address, name=get_label_from_numeric(address)))
 
 def read_memory(address, registers, memory):
@@ -204,7 +212,7 @@ def exec_BRZ(operand, registers, memory):
 
 
 def exec_BRP(operand, registers, memory):
-    if registers["acc"] >= 0:
+    if registers["acc"] >= 0 and not neg_flag:
         registers["pc"] = operand
         if PRINT_DEBUG: print("Set PC to {} as acc > 0".format(operand))
     else:
@@ -325,7 +333,8 @@ def run(file, inp):
     asm = f.read()
 
     # Reset everything
-    global total_fc, g_inp, RAM_SIZE_DECLENGTH, LabelledCommandTuple, CommandTuple, LABELS_INDEX
+    global total_fc, g_inp, RAM_SIZE_DECLENGTH, LabelledCommandTuple, CommandTuple, LABELS_INDEX, neg_flag
+    neg_flag =False
     total_fc = 0
     g_inp = int(inp)
     RAM_SIZE_DECLENGTH = math.ceil(math.log(RAM_SIZE, 10))
