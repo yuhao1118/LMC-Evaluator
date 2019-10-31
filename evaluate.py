@@ -3,6 +3,7 @@ import math, sys
 import os
 g_inp = 0
 total_fc = 0
+total_mailbox = 0
 neg_flag = False
 
 OPCODES = {
@@ -70,7 +71,8 @@ def compile_assembly(asm):
 
     #       b - Remove empty lines
     asm_lines = [line for line in asm_lines if line]
-
+    global total_mailbox
+    total_mailbox = len(asm_lines)
 
     # STEP 3 - Split into command tuples
     labelled_command_tuples = []
@@ -285,40 +287,6 @@ def execute(memory, pc=0):
             # HLT operation
             return
         EXEC_DICT[opcode](operand, registers, memory)
-    
-
-
-
-
-def print_tabular(data, columns):
-    """
-    Prints the list given to it as tabular data. Mostly for printing the memory contents.
-    @param data:
-    @param columns:
-    @return:
-    """
-
-    string_list = [str(x) for x in data]
-    max_size = len(max(string_list, key=lambda x: len(x)))
-
-    for i, item in enumerate(string_list, 1):
-        print(format(item, ">" + str(max_size)) + " ", end="")
-        if i % columns == 0:
-            print()
-
-def print_dict_table(data):
-    """
-    Prints the dict into a key column and a value column
-    @param data:
-    @return:
-    """
-
-    max_size_key = len(max([str(x) for x in data.keys()], key=lambda x: len(x)))
-    max_size_data = len(max([str(x) for x in data.values()], key=lambda x: len(x)))
-
-    for key, value in data.items():
-        print(format(key, ">" + str(max_size_key)) + "  " + format(value, ">" + str(max_size_data)))
-
 
 def run(file, inp):
     """
@@ -353,7 +321,10 @@ def run(file, inp):
 def main():
     file = sys.argv[1]
     start = int(sys.argv[2])
-    end = int(sys.argv[3])
+    try:
+    	end = int(sys.argv[3])
+    except:
+        end = start
     average_cycle = 0
 
     for i in range(start, end+1):
@@ -363,6 +334,7 @@ def main():
         print("\ntotal fetch-execute cycles:", total_fc)
         print()
 
+    print("Total mailboxes used:", total_mailbox)
     print("Average fetch-execute cycles:", int(average_cycle/(end - start + 1)))
 
 if __name__ == "__main__":
