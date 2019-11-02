@@ -9,7 +9,7 @@ A Little Minion Computer (edited version of Little Man Computer) Evaluator that 
 In the shell (or cmd), run:
 
 ```
-python3 evaluate.py [source_code_path] [start_index] [end_index]
+python3 evaluate.py <filename> [start] [end:optional]
 ```
 
 ## Example

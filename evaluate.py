@@ -166,14 +166,7 @@ def compile_assembly(asm):
 def write_memory(address, content, registers, memory):
     registers["mar"] = address
     registers["mdr"] = content
-    temp_content = registers["mdr"]
-    if content > 999:
-        temp_content = 0
-    if content < 0:
-        global neg_flag
-        neg_flag = True
-        temp_content = 0
-    memory[registers["mar"]] = temp_content
+    memory[registers["mar"]] = registers["mdr"]
     if PRINT_DEBUG: print("Wrote {data} to address {addr} ({name})".format(data=content, addr=address, name=get_label_from_numeric(address)))
 
 def read_memory(address, registers, memory):
@@ -184,11 +177,17 @@ def read_memory(address, registers, memory):
 def exec_ADD(operand, registers, memory):
     read_memory(operand, registers, memory)     # Read from operand to MDR
     registers["acc"] += registers["mdr"]        # Add MDR to accumulator
+    if registers["acc"] > 999:
+        registers["acc"] -= 1000
     if PRINT_DEBUG: print("Added MDR to accumulator")
 
 def exec_SUB(operand, registers, memory):
-    read_memory(operand, registers, memory)     # Read from operand to MDR
+    read_memory(operand, registers, memory)     # Read from operand to MDRs
     registers["acc"] -= registers["mdr"]        # Subtract MDR from accumulator
+    if registers["acc"] < 0:
+        global neg_flag
+        neg_flag = True
+        registers["acc"] += 1000
     if PRINT_DEBUG: print("Subtracted MDR from accumulator")
 
 def exec_STA(operand, registers, memory):
@@ -199,6 +198,9 @@ def exec_STA(operand, registers, memory):
 def exec_LDA(operand, registers, memory):
     read_memory(operand, registers, memory)     # Read from operand to MDR
     registers["acc"] = registers["mdr"]         # Store MDR in accumulator
+    # all data stored in mailboxes should be positive. Load the data will reset the negative flag (neg_flag)
+    global neg_flag
+    neg_flag = False
     if PRINT_DEBUG: print("Loaded MDR into accumulator")
 
 def exec_BRA(operand, registers, memory):
