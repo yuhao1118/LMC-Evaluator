@@ -77,7 +77,8 @@ def compile_assembly(asm):
     # STEP 3 - Split into command tuples
     labelled_command_tuples = []
     for linenum, line in enumerate(asm_lines, start=1):
-        parts = line.split()
+        # Remove comments from lines & split by whitespace
+        parts = line.split("//")[0].split()
 
         # If it has 3 parts, they are (label, opcode, operand)
         # If it has 2 parts, they are (label, opcode) or (opcode, operand), depending on which is a valid opcode
