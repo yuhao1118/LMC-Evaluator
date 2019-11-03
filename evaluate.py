@@ -1,10 +1,17 @@
 from collections import namedtuple
-import math, sys
+import math
+import sys
 import os
-g_inp = 0
-total_fc = 0
-total_mailbox = 0
-neg_flag = False
+
+lmc_parm = {
+    "input": 0,
+    "neg_flag": False
+}
+
+report = {
+    "total_fc": 0,
+    "total_mailbox": 0
+}
 
 OPCODES = {
     "ADD": 1,
@@ -26,7 +33,8 @@ RAM_SIZE_DECLENGTH = math.ceil(math.log(RAM_SIZE, 10))
 PRINT_DEBUG = False
 
 # Used in the process of compiling
-LabelledCommandTuple = namedtuple("LabelledCommandTuple", ["label", "opcode", "operand"])
+LabelledCommandTuple = namedtuple(
+    "LabelledCommandTuple", ["label", "opcode", "operand"])
 CommandTuple = namedtuple("CommandTuple", ["opcode", "operand"])
 
 # An index of labels: name -> address
@@ -63,7 +71,6 @@ def compile_assembly(asm):
     # STEP 1 - Split code into individual lines
     asm_lines = asm.split("\n")
 
-
     # STEP 2a - Remove comments
     for i, line in enumerate(asm_lines):
         code, *comments = line.split("#")   # Part before any hash symbols stays
@@ -71,8 +78,9 @@ def compile_assembly(asm):
 
     #       b - Remove empty lines
     asm_lines = [line for line in asm_lines if line]
-    global total_mailbox
-    total_mailbox = len(asm_lines)
+
+    # Calculate the mailbox usage
+    report["total_mailbox"] = len(asm_lines)
 
     # STEP 3 - Split into command tuples
     labelled_command_tuples = []
@@ -123,7 +131,6 @@ def compile_assembly(asm):
 
         elif len(parts) > 3:
             raise CompileError("Too many parts in line {}".format(linenum))
-
 
     # STEP 4 - Replace labels with numeric IDs
     for i, command in enumerate(labelled_command_tuples):
@@ -178,31 +185,33 @@ def read_memory(address, registers, memory):
 def exec_ADD(operand, registers, memory):
     read_memory(operand, registers, memory)     # Read from operand to MDR
     registers["acc"] += registers["mdr"]        # Add MDR to accumulator
-    if registers["acc"] > 999:
+    if registers["acc"] > 999:                  # If value above 1000, overflow
         registers["acc"] -= 1000
-    if PRINT_DEBUG: print("Added MDR to accumulator")
+    if PRINT_DEBUG:
+        print("Added MDR to accumulator")
 
 def exec_SUB(operand, registers, memory):
     read_memory(operand, registers, memory)     # Read from operand to MDRs
     registers["acc"] -= registers["mdr"]        # Subtract MDR from accumulator
-    if registers["acc"] < 0:
-        global neg_flag
-        neg_flag = True
+    if registers["acc"] < 0:                    # If value below 0, downflow and raise the negative flag
+        lmc_parm["neg_flag"] = True
         registers["acc"] += 1000
-    if PRINT_DEBUG: print("Subtracted MDR from accumulator")
+    if PRINT_DEBUG:
+        print("Subtracted MDR from accumulator")
 
 def exec_STA(operand, registers, memory):
     write_memory(operand, registers["acc"],
                  registers, memory)             # Write from accumulator to memory
-    if PRINT_DEBUG: print("Stored accumulator in memory")
+    if PRINT_DEBUG:
+        print("Stored accumulator in memory")
 
 def exec_LDA(operand, registers, memory):
     read_memory(operand, registers, memory)     # Read from operand to MDR
     registers["acc"] = registers["mdr"]         # Store MDR in accumulator
-    # all data stored in mailboxes should be positive. Load the data will reset the negative flag (neg_flag)
-    global neg_flag
-    neg_flag = False
-    if PRINT_DEBUG: print("Loaded MDR into accumulator")
+    # All data stored in mailboxes should be positive. Load data will reset the negative flag (neg_flag)
+    lmc_parm["neg_flag"] = False
+    if PRINT_DEBUG:
+        print("Loaded MDR into accumulator")
 
 def exec_BRA(operand, registers, memory):
     registers["pc"] = operand                   # Save operand to PC (branch)
@@ -217,14 +226,14 @@ def exec_BRZ(operand, registers, memory):
 
 
 def exec_BRP(operand, registers, memory):
-    if registers["acc"] >= 0 and not neg_flag:
+    if registers["acc"] >= 0 and not lmc_parm["neg_flag"]:
         registers["pc"] = operand
         if PRINT_DEBUG: print("Set PC to {} as acc > 0".format(operand))
     else:
         if PRINT_DEBUG: print("No change to PC as ass != 0")
 
 def exec_INP(operand, registers, memory):
-    registers["acc"] = g_inp
+    registers["acc"] = lmc_parm["input"]
 
 def exec_OUT(operand, registers, memory):
     print(registers["acc"], end=' ')
@@ -240,7 +249,6 @@ EXEC_DICT = {
     8: exec_INP,
     9: exec_OUT
 }
-
 
 def execute(memory, pc=0):
     """
@@ -269,9 +277,8 @@ def execute(memory, pc=0):
         # Increment PC
         registers["pc"] += 1
 
-        # Increment total fetch cycle
-        global total_fc
-        total_fc += 1
+        # Increment total fetch cycle, will not be reseted till finish
+        report["total_fc"] += 1
 
         # Get memory from address in MAR and store in MDR
         registers["mdr"] = memory[registers["mar"]]
@@ -291,54 +298,55 @@ def execute(memory, pc=0):
             return
         EXEC_DICT[opcode](operand, registers, memory)
 
-def run(file, inp):
+def main():
     """
     Compile then execute
     @return:
     """
+    file_ = sys.argv[1]
+    start_index = int(sys.argv[2])
+
+    # Allow single index
+    try:
+        end_index = int(sys.argv[3])
+    except:
+        end_index = start_index
+
+    avg_cycle = 0
 
     # Open the asm code
-    f = open(file)
+    f = open(file_)
 
     # Read the code into str
     asm = f.read()
 
-    # Reset everything
-    global total_fc, g_inp, RAM_SIZE_DECLENGTH, LabelledCommandTuple, CommandTuple, LABELS_INDEX, neg_flag
-    neg_flag =False
-    total_fc = 0
-    g_inp = int(inp)
-    RAM_SIZE_DECLENGTH = math.ceil(math.log(RAM_SIZE, 10))
-    LabelledCommandTuple = namedtuple("LabelledCommandTuple", ["label", "opcode", "operand"])
-    CommandTuple = namedtuple("CommandTuple", ["opcode", "operand"])
-    LABELS_INDEX = {}
+    for i in range(start_index, end_index+1):
+        # Reset parameters
+        global lmc_parm, report, LABELS_INDEX
+        lmc_parm = {
+            "input": i,
+            "neg_flag": False
+        }
+        report = {
+            "total_fc": 0,
+            "total_mailbox": 0
+        }
+        LABELS_INDEX = {}
 
-    # Compile the program
-    memory = compile_assembly(asm)
+        # Compile the program
+        memory = compile_assembly(asm)
 
-    # Run the program
-    execute(memory)
+        # Run the program
+        print("Start at:", i)
+        print(">", end = " ")
+        execute(memory)
 
-    return total_fc
+        avg_cycle += report["total_fc"]
 
-def main():
-    file = sys.argv[1]
-    start = int(sys.argv[2])
-    try:
-    	end = int(sys.argv[3])
-    except:
-        end = start
-    average_cycle = 0
+        print("\n> fetch-execute cycles:", report["total_fc"], "\n")
 
-    for i in range(start, end+1):
-        print("Start at:",i)
-        total_fc = run(file,i)
-        average_cycle += total_fc
-        print("\ntotal fetch-execute cycles:", total_fc)
-        print()
-
-    print("Total mailboxes used:", total_mailbox)
-    print("Average fetch-execute cycles:", int(average_cycle/(end - start + 1)))
+    print("Total mailboxes used:", report["total_mailbox"])
+    print("Average fetch-execute cycles:", int(avg_cycle/(end_index - start_index + 1)))
 
 if __name__ == "__main__":
     main()
