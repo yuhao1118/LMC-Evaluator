@@ -1,7 +1,6 @@
 from collections import namedtuple
 import math
 import sys
-import os
 
 lmc_parm = {
     "input": 0,
@@ -10,7 +9,8 @@ lmc_parm = {
 
 report = {
     "total_fc": 0,
-    "total_mailbox": 0
+    "total_mailbox": 0,
+    "out": ""
 }
 
 OPCODES = {
@@ -237,6 +237,7 @@ def exec_INP(operand, registers, memory):
 
 def exec_OUT(operand, registers, memory):
     print(registers["acc"], end=' ')
+    report["out"] += str(registers["acc"]) + " "
 
 EXEC_DICT = {
     1: exec_ADD,
@@ -298,6 +299,45 @@ def execute(memory, pc=0):
             return
         EXEC_DICT[opcode](operand, registers, memory)
 
+def test_bsc(num, zero=True):
+    n = num
+    res = ""
+    while True:
+        if n > 999:
+            n = 0
+            if zero:
+                res += str(0)
+            break
+        if n == 1 or n == 0:
+            res += str(n)
+            break
+        res += str(n) + " "
+        if n % 2 == 0:
+            n = int(n / 2)
+        else:
+            n = int(n * 3 + 1)
+    return res.strip()
+
+def test_adv(num, zero=True):
+    n = num
+    res = ""
+    while True:
+        if n > 999:
+            n = 0
+            if zero:
+                res += str(0)
+            break
+        if n == 1 or n == 0:
+            res += str(n)
+            break
+        res += str(n) + " "
+        if n % 2 == 0:
+            n = int(n / 2)
+        else:
+            n = int((n * 3 + 1) / 2)
+    return res.strip()
+
+
 def main():
     """
     Compile then execute
@@ -311,6 +351,17 @@ def main():
         end_index = int(sys.argv[3])
     except:
         end_index = start_index
+    
+    task = sys.argv[4]
+    zero = sys.argv[5]
+
+    if zero == 'f':
+        zero = False
+    elif zero == 't':
+        zero = True
+    else:
+        raise
+
 
     avg_cycle = 0
 
@@ -329,7 +380,8 @@ def main():
         }
         report = {
             "total_fc": 0,
-            "total_mailbox": 0
+            "total_mailbox": 0,
+            "out": ""
         }
         LABELS_INDEX = {}
 
@@ -340,11 +392,17 @@ def main():
         print("Start at:", i)
         print(">", end = " ")
         execute(memory)
+        
+        if task == "bsc":
+            assert report["out"].strip() == test_bsc(i, zero=zero)
+        elif task == "adv":
+            assert report["out"].strip() == test_adv(i, zero=zero)
 
         avg_cycle += report["total_fc"]
 
         print("\n> fetch-execute cycles:", report["total_fc"], "\n")
 
+    print("All test passed! ")
     print("Total mailboxes used:", report["total_mailbox"])
     print("Average fetch-execute cycles:", int(avg_cycle/(end_index - start_index + 1)))
 
